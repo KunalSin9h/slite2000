@@ -2,7 +2,7 @@
     <img src="https://github.com/user-attachments/assets/09ee2ac3-6853-4894-b42c-2d07b49d3712" alt="Slite2000" width="200" height="200">
 </div>
 
-**Slite2000** is a modern, native-feeling desktop application for managing and visualizing remote SQLite databases via SSH. It provides a clean, dark-themed interface inspired by tools like TablePlus, allowing you to execute queries and explore tables without manually downloading database files.
+**Slite2000** is a desktop application for managing and visualizing remote SQLite databases via SSH. It provides a clean, dark-themed interface inspired by tools like TablePlus, allowing you to execute queries and explore tables without manually downloading database files.
 
 
 ## Features
@@ -31,7 +31,7 @@
     ```
 4.  **Clone & Build**:
     ```bash
-    git clone https://github.com/yourusername/slite2000.git
+    git clone https://github.com/KunalSin9h/slite2000.git
     cd slite2000
     wails build
     ```
