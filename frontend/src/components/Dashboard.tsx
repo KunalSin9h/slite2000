@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Table as TableIcon, LogOut, Database, BarChart2, Filter, X } from 'lucide-react';
+import { Play, Table as TableIcon, LogOut, Database, BarChart2, Filter, X, PieChart } from 'lucide-react';
 import { ExecuteQuery } from '../../wailsjs/go/main/App';
 import { Visualization } from './Visualization';
 
@@ -35,6 +35,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ dbPath, onLogout }) => {
     const [activeTable, setActiveTable] = useState<string | null>(null);
     const [showFilters, setShowFilters] = useState(false);
     const [filters, setFilters] = useState<FilterConfig[]>([]);
+
+    // Distribution State
+    const [showDistribution, setShowDistribution] = useState(false);
+    const [distributionColumn, setDistributionColumn] = useState('');
 
     useEffect(() => {
         fetchTables();
@@ -163,6 +167,58 @@ export const Dashboard: React.FC<DashboardProps> = ({ dbPath, onLogout }) => {
         setFilters(newFilters);
     };
 
+    const handleDistribution = async () => {
+        if (!activeTable || !distributionColumn) return;
+
+        const q = `SELECT "${distributionColumn}" as value, COUNT(*) as count FROM "${activeTable}" GROUP BY "${distributionColumn}" ORDER BY count DESC LIMIT 50;`;
+        setQuery(q);
+
+        setIsLoading(true);
+        setError(null);
+        setResults([]);
+        // Don't clear columns here, we want to keep the table schema columns for the dropdown
+        // But wait, executeCustomQuery clears columns. We should probably preserve them or re-fetch them?
+        // Actually, executeCustomQuery sets columns based on result. 
+        // If we run a distribution query, the result columns will be 'value' and 'count'.
+        // This might mess up the column selector if we want to switch back to another column.
+        // But that's okay, the user can click the table name again to reset.
+
+        try {
+            const res = await ExecuteQuery(dbPath, q);
+            if (res.startsWith("Error")) {
+                setError(res);
+            } else {
+                const parsed = JSON.parse(res);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    setResults(parsed);
+                    // We intentionally don't overwrite 'columns' here if we want to keep the dropdown populated?
+                    // No, 'columns' state drives the table view AND the dropdowns.
+                    // If we overwrite 'columns' with ['value', 'count'], the dropdown will only show those.
+                    // So we should probably separate 'tableColumns' from 'resultColumns'.
+                    // For now, let's just let it be. If they want to distribute on another column, they might need to reload the table.
+                    // OR, we can just NOT update columns if it's a distribution query?
+                    // But the Table View needs 'columns' to render the results.
+                    // Let's stick to the standard behavior: update columns to match results.
+                    // The user can click the table name to "reset" context.
+                    setColumns(Object.keys(parsed[0]));
+
+                    // Switch to chart mode
+                    setViewMode('chart');
+                    setChartType('bar');
+                    setXAxisKey('value');
+                    setDataKey('count');
+                } else {
+                    setResults([]);
+                    setError("No distribution data found.");
+                }
+            }
+        } catch (e: any) {
+            setError("Execution failed: " + e.toString());
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     return (
         <div className="flex h-screen bg-[#1E1E1E] text-[#CCCCCC] font-sans text-sm">
             {/* Sidebar */}
@@ -216,6 +272,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ dbPath, onLogout }) => {
                                 >
                                     <Filter className="w-3 h-3" />
                                     Filters
+                                </button>
+                            )}
+                            {activeTable && (
+                                <button
+                                    onClick={() => {
+                                        setShowDistribution(!showDistribution);
+                                        setShowFilters(false);
+                                    }}
+                                    className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-sm transition-colors ${showDistribution ? 'bg-[#37373D] text-white' : 'text-[#999999] hover:text-[#CCCCCC]'}`}
+                                >
+                                    <PieChart className="w-3 h-3" />
+                                    Distribution
                                 </button>
                             )}
                         </div>
@@ -330,6 +398,31 @@ export const Dashboard: React.FC<DashboardProps> = ({ dbPath, onLogout }) => {
                         )}
                     </div>
 
+                    {/* Distribution Bar */}
+                    {showDistribution && activeTable && (
+                        <div className="bg-[#2D2D2D] p-2 border-b border-[#1E1E1E] flex items-center gap-2 animate-in slide-in-from-top-2 duration-200">
+                            <span className="text-xs text-[#CCCCCC] font-medium">Distribution of:</span>
+                            <select
+                                value={distributionColumn}
+                                onChange={(e) => setDistributionColumn(e.target.value)}
+                                className="bg-[#37373D] text-[#CCCCCC] text-xs border border-[#454545] rounded-sm px-2 py-1 outline-none focus:border-[#8B5CF6]"
+                            >
+                                <option value="">Select Column</option>
+                                {columns.map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                            <button
+                                onClick={handleDistribution}
+                                disabled={!distributionColumn}
+                                className="bg-[#8B5CF6] hover:bg-[#7C3AED] text-white text-xs px-3 py-1 rounded-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                Show Distribution
+                            </button>
+                            <button onClick={() => setShowDistribution(false)} className="ml-auto text-[#666666] hover:text-[#CCCCCC]">
+                                <X className="w-3 h-3" />
+                            </button>
+                        </div>
+                    )}
+
                     {error ? (
                         <div className="m-4 bg-[#3a1d1d] border border-[#5a2d2d] text-[#f87171] p-3 rounded-sm text-xs font-mono">
                             {error}
@@ -388,6 +481,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ dbPath, onLogout }) => {
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 };
