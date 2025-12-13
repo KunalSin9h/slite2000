@@ -2,8 +2,6 @@
 <img width="1026" height="811" alt="image" src="https://github.com/user-attachments/assets/3e6979b6-c4c3-4b28-9c68-f109559640a7" />
 </div>
 
-
-
 ### Slite2000 is a desktop application for managing and visualizing remote SQLite databases via SSH.</p>
 
 ## Features
